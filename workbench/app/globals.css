@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #0b0d12;
+  --color-ink-900: #11141c;
+  --color-ink-850: #161a24;
+  --color-ink-800: #1c2130;
+  --color-ink-700: #2a3142;
+  --color-ink-500: #6b7590;
+  --color-ink-300: #a8b0c4;
+  --color-ink-100: #e6e9f2;
+  --color-accent: #6ee7b7;
+  --color-accent-dim: #34d399;
+  --color-hot: #f97362;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条统一成暗色，免得两栏布局里出现两条亮白条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-700) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-ink-700);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+/* 流式输出时的光标 */
+.streaming-caret::after {
+  content: "▌";
+  margin-left: 2px;
+  color: var(--color-accent);
+  animation: pulse-dot 1s steps(2) infinite;
+}
