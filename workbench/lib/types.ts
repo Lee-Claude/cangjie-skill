@@ -26,9 +26,19 @@ export type HotSourceResult = {
   error?: string;
 };
 
+/** AI hot 项目的每日简报，一段话概括当天 AI 圈主线。 */
+export type AiHotBriefing = {
+  date: string;
+  content: string;
+  emoji?: string;
+  newsCount?: number;
+  sources?: Record<string, number>;
+};
+
 export type HotFeedResponse = {
   items: HotItem[];
   sources: { source: string; sourceLabel: string; count: number; error?: string }[];
+  briefing: AiHotBriefing | null;
   fetchedAt: string;
   cached: boolean;
 };

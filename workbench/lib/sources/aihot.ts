@@ -1,114 +1,124 @@
-import type { HotSourceResult } from "@/lib/types";
+import type { AiHotBriefing, HotSourceResult } from "@/lib/types";
 import { applyRecencyDecay, fetchWithTimeout, idFromUrl, normalizeScore, stripHtml } from "./util";
 
 const SOURCE = "aihot";
 const LABEL = "AI 热榜";
 
 /**
- * 对接自建的 AI 热榜服务（如 zenitlab/ai-hot-radar、tbang6860-commits/aihot）。
+ * 接入 AI hot（github.com/laolaoshiren/ai-hot）。
  *
- * 只有设置了 AIHOT_API_BASE 才启用，例如：
- *   AIHOT_API_BASE=http://localhost:3001/api/agent
- *   AIHOT_API_PATH=/curated          # 可选，默认空
- *   AIHOT_API_TOKEN=xxx              # 可选，作为 Bearer token
+ * 这个项目每 6 小时把榜单写回自己仓库的 data/ 目录，所以不需要部署任何东西 ——
+ * 直接读 raw.githubusercontent 上的 JSON 就行，开箱即用。
  *
- * 各家热榜项目的字段名不统一，这里做宽松映射：标题取 title/name/headline，
- * 链接取 url/link/href，热度取 score/heat/hot/points/stars。字段对不上时
- * 该条会被跳过，而不是整个数据源报错。
+ * 用到两个文件：
+ *   data/hot.json      —— 热榜条目（新闻 / 工具 / 项目 / 模型）
+ *   data/briefing.json —— 每日 AI 简报（一段话总结当天主线）
+ *
+ * 想换成自己的 fork 或镜像：
+ *   AIHOT_REPO=owner/repo      默认 laolaoshiren/ai-hot
+ *   AIHOT_BRANCH=main
+ *   AIHOT_BASE_URL=https://…   直接指定放着 hot.json / briefing.json 的目录
+ *   AIHOT_ENABLED=false        关掉这个源
  */
 
-type LooseRecord = Record<string, unknown>;
+const DEFAULT_REPO = "laolaoshiren/ai-hot";
 
-function pickString(record: LooseRecord, keys: string[]): string | undefined {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return undefined;
-}
+/** hot.json 里单条的结构，字段照抄自真实数据。 */
+type AiHotItem = {
+  title?: string;
+  title_zh?: string;
+  name?: string;
+  url?: string;
+  internal_url?: string;
+  type?: string;
+  type_label?: string;
+  category?: string;
+  source?: string;
+  score?: number;
+  stars?: number;
+  time?: string;
+  detail?: string;
+  description?: string;
+  ai_summary?: string;
+};
 
-function pickNumber(record: LooseRecord, keys: string[]): number | undefined {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
-      return Number(value);
-    }
-  }
-  return undefined;
-}
+type HotPayload = {
+  updated_at?: string;
+  total?: number;
+  /** 三个键指向同一批数据，取到哪个用哪个 */
+  hot_list?: AiHotItem[];
+  top_20?: AiHotItem[];
+  items?: AiHotItem[];
+};
 
-/** 响应可能是数组，也可能包在 data / items / list / results 里。 */
-function extractList(payload: unknown): LooseRecord[] {
-  if (Array.isArray(payload)) return payload as LooseRecord[];
-  if (payload && typeof payload === "object") {
-    for (const key of ["data", "items", "list", "results", "hotspots"]) {
-      const value = (payload as LooseRecord)[key];
-      if (Array.isArray(value)) return value as LooseRecord[];
-      // 有些接口是 { data: { items: [...] } }
-      if (value && typeof value === "object") {
-        const nested = extractList(value);
-        if (nested.length) return nested;
-      }
-    }
-  }
-  return [];
-}
+type BriefingPayload = {
+  date?: string;
+  content?: string;
+  emoji?: string;
+  news_count?: number;
+  sources?: Record<string, number>;
+};
 
 export function isAiHotEnabled(): boolean {
-  return Boolean(process.env.AIHOT_API_BASE?.trim());
+  return process.env.AIHOT_ENABLED?.trim().toLowerCase() !== "false";
 }
 
+function baseUrl(): string {
+  const explicit = process.env.AIHOT_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  const repo = process.env.AIHOT_REPO?.trim() || DEFAULT_REPO;
+  const branch = process.env.AIHOT_BRANCH?.trim() || "main";
+  return `https://raw.githubusercontent.com/${repo}/${branch}/data`;
+}
+
+/** hot.json 的 score 是个位数到十几的小整数（实测 6–15），不是百分制。 */
+const SCORE_SATURATION = 30;
+
 export async function fetchAiHot(): Promise<HotSourceResult> {
-  const base = process.env.AIHOT_API_BASE?.trim();
-  if (!base) {
+  if (!isAiHotEnabled()) {
     return { source: SOURCE, sourceLabel: LABEL, items: [] };
   }
 
-  const path = process.env.AIHOT_API_PATH?.trim() ?? "";
-  const url = `${base.replace(/\/$/, "")}${path}`;
-  const headers: Record<string, string> = { accept: "application/json" };
-  if (process.env.AIHOT_API_TOKEN) {
-    headers.authorization = `Bearer ${process.env.AIHOT_API_TOKEN}`;
-  }
-
   try {
-    const res = await fetchWithTimeout(url, { headers });
+    const res = await fetchWithTimeout(`${baseUrl()}/hot.json`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const list = extractList(await res.json());
+    const payload = (await res.json()) as HotPayload;
 
-    const items = list
-      .map((record) => {
-        const title = pickString(record, ["title", "name", "headline", "text"]);
-        const link = pickString(record, ["url", "link", "href", "source_url", "originalUrl"]);
-        if (!title || !link) return null;
+    const raw = payload.hot_list ?? payload.items ?? payload.top_20 ?? [];
 
-        const raw = pickNumber(record, ["score", "heat", "hot", "hotValue", "points", "stars"]);
-        const published = pickString(record, [
-          "publishedAt",
-          "published_at",
-          "createdAt",
-          "created_at",
-          "date",
-          "time",
-        ]);
+    const items = raw
+      .map((entry) => {
+        // 外链是创作者真正要看的东西；没有外链才退回站内页
+        const link = entry.url ?? entry.internal_url;
+        const title = entry.title_zh ?? entry.title ?? entry.name;
+        if (!link || !title) return null;
+
+        // 榜单本身已经是筛过的 top N，所以基准分给得比较高
+        const base =
+          typeof entry.score === "number"
+            ? normalizeScore(entry.score, SCORE_SATURATION)
+            : typeof entry.stars === "number"
+              ? normalizeScore(entry.stars, 5000)
+              : 70;
+
+        const published = entry.time ?? entry.detail;
+        const summary = entry.ai_summary ?? entry.description;
 
         return {
           id: idFromUrl(link),
-          title,
+          title: stripHtml(title, 200),
           url: link,
           source: SOURCE,
           sourceLabel: LABEL,
-          score: applyRecencyDecay(raw === undefined ? 70 : normalizeScore(raw, 100), published),
-          rawScore: raw,
-          rawScoreLabel: raw === undefined ? "热榜收录" : `热度 ${raw}`,
+          score: applyRecencyDecay(base, published),
+          rawScore: entry.score,
+          rawScoreLabel: entry.type_label ?? entry.category ?? "热榜收录",
           publishedAt: published,
-          summary: pickString(record, ["summary", "description", "desc", "excerpt", "content"])
-            ? stripHtml(
-                pickString(record, ["summary", "description", "desc", "excerpt", "content"])!,
-              )
-            : undefined,
-          author: pickString(record, ["author", "source", "site", "platform"]),
+          author: entry.source,
+          summary: summary ? stripHtml(summary) : undefined,
+          tags: [entry.category, entry.type].filter(
+            (t): t is string => typeof t === "string" && t.length > 0,
+          ),
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -121,5 +131,27 @@ export async function fetchAiHot(): Promise<HotSourceResult> {
       items: [],
       error: err instanceof Error ? err.message : String(err),
     };
+  }
+}
+
+/** 每日 AI 简报。拿不到就返回 null —— 它只是锦上添花，不该拖累榜单。 */
+export async function fetchAiHotBriefing(): Promise<AiHotBriefing | null> {
+  if (!isAiHotEnabled()) return null;
+
+  try {
+    const res = await fetchWithTimeout(`${baseUrl()}/briefing.json`);
+    if (!res.ok) return null;
+    const payload = (await res.json()) as BriefingPayload;
+    if (!payload.content) return null;
+
+    return {
+      date: payload.date ?? "",
+      content: payload.content,
+      emoji: payload.emoji,
+      newsCount: payload.news_count,
+      sources: payload.sources,
+    };
+  } catch {
+    return null;
   }
 }

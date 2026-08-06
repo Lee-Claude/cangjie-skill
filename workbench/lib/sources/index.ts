@@ -1,5 +1,5 @@
 import type { HotFeedResponse, HotSourceResult } from "@/lib/types";
-import { fetchAiHot, isAiHotEnabled } from "./aihot";
+import { fetchAiHot, fetchAiHotBriefing } from "./aihot";
 import { fetchArxiv } from "./arxiv";
 import { fetchGithub } from "./github";
 import { fetchHackerNews } from "./hackernews";
@@ -11,14 +11,13 @@ const CACHE_TTL_MS = Number(process.env.HOT_CACHE_TTL_MS ?? 5 * 60 * 1000);
 let cache: { at: number; payload: HotFeedResponse } | null = null;
 
 function collectors(): Array<() => Promise<HotSourceResult>> {
-  const list: Array<() => Promise<HotSourceResult>> = [
+  return [
+    fetchAiHot,
     fetchHackerNews,
     fetchGithub,
     fetchArxiv,
     ...resolveFeeds().map((feed) => () => fetchRssFeed(feed)),
   ];
-  if (isAiHotEnabled()) list.push(fetchAiHot);
-  return list;
 }
 
 /**
@@ -30,20 +29,23 @@ export async function getHotFeed(force = false): Promise<HotFeedResponse> {
     return { ...cache.payload, cached: true };
   }
 
-  const results = await Promise.all(
-    collectors().map(async (run) => {
-      try {
-        return await run();
-      } catch (err) {
-        return {
-          source: "unknown",
-          sourceLabel: "未知数据源",
-          items: [],
-          error: err instanceof Error ? err.message : String(err),
-        } satisfies HotSourceResult;
-      }
-    }),
-  );
+  const [results, briefing] = await Promise.all([
+    Promise.all(
+      collectors().map(async (run) => {
+        try {
+          return await run();
+        } catch (err) {
+          return {
+            source: "unknown",
+            sourceLabel: "未知数据源",
+            items: [],
+            error: err instanceof Error ? err.message : String(err),
+          } satisfies HotSourceResult;
+        }
+      }),
+    ),
+    fetchAiHotBriefing().catch(() => null),
+  ]);
 
   const payload: HotFeedResponse = {
     items: dedupeAndRank(results.flatMap((r) => r.items)),
@@ -53,6 +55,7 @@ export async function getHotFeed(force = false): Promise<HotFeedResponse> {
       count: r.items.length,
       error: r.error,
     })),
+    briefing,
     fetchedAt: new Date().toISOString(),
     cached: false,
   };

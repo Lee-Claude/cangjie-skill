@@ -110,6 +110,8 @@ export function HotFeed({
       </header>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
+        {feed?.briefing && <BriefingCard briefing={feed.briefing} />}
+
         {error && (
           <p className="rounded-lg border border-hot/40 bg-hot/10 px-3 py-2 text-xs text-hot">
             {error}
@@ -141,6 +143,50 @@ export function HotFeed({
         ))}
       </div>
     </section>
+  );
+}
+
+/** AI hot 的每日简报，一段话概括当天主线，放在榜单最上面。 */
+function BriefingCard({ briefing }: { briefing: NonNullable<HotFeedResponse["briefing"]> }) {
+  const [expanded, setExpanded] = useState(false);
+  const topSources = Object.entries(briefing.sources ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  return (
+    <div className="rounded-xl border border-ink-700 bg-gradient-to-br from-ink-850 to-ink-900 p-3">
+      <div className="flex items-center gap-2 text-[11px] text-ink-500">
+        <span>{briefing.emoji ?? "📮"}</span>
+        <span className="font-medium text-ink-300">今日 AI 简报</span>
+        <span>{briefing.date}</span>
+        {briefing.newsCount !== undefined && <span>· 汇总 {briefing.newsCount} 条</span>}
+      </div>
+
+      <p
+        className={`mt-2 text-xs leading-relaxed text-ink-100 ${
+          expanded ? "" : "line-clamp-3"
+        }`}
+      >
+        {briefing.content}
+      </p>
+
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex flex-wrap gap-1">
+          {topSources.map(([name, count]) => (
+            <span key={name} className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-500">
+              {name} {count}
+            </span>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[11px] text-ink-500 underline underline-offset-2 hover:text-ink-300"
+        >
+          {expanded ? "收起" : "展开"}
+        </button>
+      </div>
+    </div>
   );
 }
 

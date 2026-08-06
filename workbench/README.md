@@ -33,10 +33,11 @@ OPENAI_MODEL=deepseek-chat
 
 ## 热点数据源
 
-默认开箱即用、不需要任何 key 的四类源：
+默认开箱即用、不需要任何 key 的五类源：
 
 | 源 | 内容 | 热度依据 |
 | --- | --- | --- |
+| **AI 热榜** | [AI hot](https://github.com/laolaoshiren/ai-hot) 的中文 AI 热榜 + 每日简报 | 项目自带 score |
 | Hacker News | 近 3 天 AI 相关、>20 分的帖子 | points |
 | GitHub | 近 60 天新建、>100 star 的 AI 仓库 | star 数 |
 | arXiv | cs.AI / cs.LG / cs.CL 最新论文 | 发布时间 |
@@ -44,17 +45,23 @@ OPENAI_MODEL=deepseek-chat
 
 所有源**并行拉取、单独容错**：某个源挂了只会在面板上标红一个 `!`，其余照常出结果。热度分统一压到 0–100（log 归一，避免一个 5 万 star 的仓库把榜单压平），再叠加时间衰减：24 小时内不衰减，之后一周内线性降到 40%。结果按 URL 去重，服务端缓存 5 分钟，前端每 5 分钟自动刷新。
 
-### 接入自建的 AI 热榜
+### AI 热榜（已接入，零配置）
 
-如果你在跑 [ai-hot-radar](https://github.com/zenitlab/ai-hot-radar)、[aihot](https://github.com/tbang6860-commits/aihot) 这类项目，填上它的 API 地址就会自动合并进榜单：
+[AI hot](https://github.com/laolaoshiren/ai-hot) 每 6 小时把榜单写回自己仓库的 `data/` 目录，所以**不需要部署它的服务**——直接读 raw.githubusercontent 上的 JSON 就行，开箱可用。用到两个文件：
+
+- `data/hot.json` → 热榜条目（新闻 / 工具 / 项目 / 模型），带 score、来源、AI 摘要、分类标签
+- `data/briefing.json` → 每日 AI 简报，渲染成榜单顶部那张卡片
+
+只有换 fork、换镜像或想关掉它才需要配置：
 
 ```bash
-AIHOT_API_BASE=http://localhost:3001/api/agent
-AIHOT_API_PATH=/curated        # 可选
-AIHOT_API_TOKEN=               # 可选
+AIHOT_REPO=laolaoshiren/ai-hot          # 换成你自己的 fork
+AIHOT_BRANCH=main
+AIHOT_BASE_URL=https://example.com/data # 直接指定放 hot.json / briefing.json 的目录
+AIHOT_ENABLED=false                     # 关掉
 ```
 
-各家热榜的字段名不统一，适配器做了宽松映射：标题认 `title/name/headline`，链接认 `url/link/href`，热度认 `score/heat/hot/points/stars`，响应外层认 `data/items/list/results/hotspots`。对不上的条目会被跳过，不会让整个源报错。字段实在对不上就改 `lib/sources/aihot.ts` 里的 `pickString` / `pickNumber` 列表。
+适配代码在 `lib/sources/aihot.ts`，字段是照着真实数据写的（`hot_list` / `items` / `top_20` 三个键都认，取到哪个用哪个）。
 
 ### 换 RSS 源
 
