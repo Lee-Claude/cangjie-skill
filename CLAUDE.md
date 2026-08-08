@@ -2,12 +2,12 @@
 
 ## Obsidian 笔记
 
-用户把这个仓库同步进本机的 `~/Documents/Obsidian` 库。**做完一块有意义的工作后，在 `obsidian/` 目录写一篇对应的笔记**，不要只留代码和 commit message。
+用户把这个仓库同步进本机的 `~/Obsidian` 库。**做完一块有意义的工作后，在 `obsidian/` 目录写一篇对应的笔记**，不要只留代码和 commit message。
 
 要求：
 
 - frontmatter 至少带 `title`、`tags`、`created`；子笔记加 `parent: "[[上级笔记]]"`
-- 笔记之间用 `[[双链]]` 串起来，并在 `obsidian/AI 工作台.md` 的索引里挂上
+- 笔记之间用 wikilink 串起来，并在 `obsidian/AI 工作台.md` 的索引里挂上
 - 写**为什么这么做**和**踩了什么坑**，不要复述代码本身 —— 代码在仓库里，笔记的价值是解释取舍
 - 用中文
 
