@@ -110,8 +110,18 @@ cat > "$PLIST" <<PLIST_EOF
     <string>--autostash</string>
     <string>--quiet</string>
   </array>
+  <!-- 必须设。不设的话 launchd 给的 cwd 不一定可读，git 起来 getcwd() 就会
+       fatal: Unable to read current working directory: Operation not permitted -->
+  <key>WorkingDirectory</key><string>$TARGET</string>
+  <!-- launchd 的环境极简，HOME 缺了 git 找不到 ~/.gitconfig -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>$HOME</string>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin</string>
+  </dict>
   <key>StartInterval</key><integer>$INTERVAL_SECONDS</integer>
   <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/$LABEL.out</string>
   <key>StandardErrorPath</key><string>/tmp/$LABEL.err</string>
 </dict>
 </plist>
@@ -119,7 +129,29 @@ PLIST_EOF
 
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
-ok "定时任务已注册，每 $((INTERVAL_SECONDS / 60)) 分钟自动 pull 一次"
+
+# 「注册成功」不等于「真的能跑」——launchd 的运行环境和你终端里的完全不同，
+# 光看 load 有没有报错会得到假阳性。这里立刻实跑一次并检查退出码。
+: > "/tmp/$LABEL.err"
+launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+
+status=""
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  sleep 1
+  # launchctl list 三列：PID / 上次退出码 / Label
+  status="$(launchctl list 2>/dev/null | awk -v l="$LABEL" '$3 == l { print $2 }')"
+  # 还在跑的时候 PID 那列是数字，退出码要等它结束才准
+  running="$(launchctl list 2>/dev/null | awk -v l="$LABEL" '$3 == l { print $1 }')"
+  [ "$running" = "-" ] && break
+done
+
+if [ "${status:-0}" = "0" ]; then
+  ok "定时任务已注册并实测跑通，每 $((INTERVAL_SECONDS / 60)) 分钟自动 pull 一次"
+else
+  warn "任务注册了，但试跑失败（退出码 ${status:-未知}）"
+  [ -s "/tmp/$LABEL.err" ] && warn "报错：$(head -2 "/tmp/$LABEL.err")"
+  warn "笔记已经拉下来了，只是不会自动更新。手动同步：git -C '$TARGET' pull"
+fi
 
 echo
 echo "完成。Obsidian 里打开「${FOLDER_NAME}」就能看到笔记。"
