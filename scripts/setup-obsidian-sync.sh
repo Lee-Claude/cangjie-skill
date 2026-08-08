@@ -2,7 +2,7 @@
 #
 # 把这个仓库的 obsidian/ 目录接进本机 Obsidian 库，并配好自动同步。
 #
-#   ./scripts/setup-obsidian-sync.sh ~/文稿/Obsidian
+#   ./scripts/setup-obsidian-sync.sh ~/Documents/Obsidian
 #
 # 做两件事：
 #   1. sparse checkout —— 只把 obsidian/ 拉到库里，代码一个字节都不落盘
@@ -24,7 +24,7 @@ warn(){ printf '\033[33m!\033[0m %s\n' "$1"; }
 
 # ── 参数 ────────────────────────────────────────────────────────────
 VAULT="${1:-}"
-[ -n "$VAULT" ] || die "用法：$0 <Obsidian 库路径>   例：$0 ~/文稿/Obsidian"
+[ -n "$VAULT" ] || die "用法：$0 <Obsidian 库路径>   例：$0 ~/Documents/Obsidian"
 VAULT="${VAULT/#\~/$HOME}"
 [ -d "$VAULT" ] || die "找不到目录：$VAULT"
 

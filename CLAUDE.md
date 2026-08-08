@@ -2,7 +2,7 @@
 
 ## Obsidian 笔记
 
-用户把这个仓库同步进本机的 `~/文稿/Obsidian` 库。**做完一块有意义的工作后，在 `obsidian/` 目录写一篇对应的笔记**，不要只留代码和 commit message。
+用户把这个仓库同步进本机的 `~/Documents/Obsidian` 库。**做完一块有意义的工作后，在 `obsidian/` 目录写一篇对应的笔记**，不要只留代码和 commit message。
 
 要求：
 

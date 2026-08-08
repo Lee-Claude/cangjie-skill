@@ -7,7 +7,7 @@
 ```bash
 git clone https://github.com/Lee-Claude/cangjie-skill.git ~/code/cangjie-skill
 cd ~/code/cangjie-skill
-./scripts/setup-obsidian-sync.sh ~/文稿/Obsidian
+./scripts/setup-obsidian-sync.sh ~/Documents/Obsidian
 ```
 
 一条命令搞定：sparse checkout 只把这个目录拉进库（代码不落盘），再注册一个 launchd 任务每 15 分钟自动 pull。脚本幂等，可以重复跑。

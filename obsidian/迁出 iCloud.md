@@ -12,6 +12,32 @@ parent: "[[同步方案]]"
 
 把 Obsidian 库从 iCloud Drive 挪到本地，让 [[同步方案]] 里的 git 仓库能安全运行。
 
+> **2026-08-07 实测：本机不需要挪。** `~/Documents` 不是软链，iCloud「桌面与文稿文件夹」同步是关的，占位符数量 0。库 `~/Documents/Obsidian` 本来就是纯本地目录。
+>
+> 下面的流程留着备用 —— 换机器、或哪天手滑开了同步，照这个走。
+
+## 先确认要不要挪
+
+别上来就搬。终端粘这段，三行输出就够判断：
+
+```bash
+if [ -L ~/Documents ]; then
+  echo "iCloud 同步开着 ⚠️  →  $(readlink ~/Documents)"
+else
+  echo "没开 ✅  普通本地目录，不用挪"
+fi
+find ~/Documents -name '*.icloud' 2>/dev/null | wc -l   # 占位符数量，0 才干净
+```
+
+原理：开启「桌面与文稿文件夹」同步后，macOS 会把 `~/Documents` 变成指向
+`~/Library/Mobile Documents/com~apple~CloudDocs/Documents` 的软链。用 `-L` 判断比翻设置界面准，
+也不用进设置界面冒手滑点错开关的风险。
+
+> ⚠️ **终端里没有 `~/文稿` 这个路径。**「文稿」只是 Finder 显示的中文名，
+> 文件系统里是 `~/Documents`。`cd ~/文稿` 会直接报错。
+
+只有第一行显示"开着"才需要往下做。
+
 ## 为什么必须挪
 
 iCloud 的**「优化 Mac 储存空间」**会把不常访问的文件抽走，本地只留一个几百字节的 `.icloud` 占位符，用到时再下载。
@@ -30,10 +56,10 @@ Obsidian 官方也不建议库放 iCloud（他们自己卖 Obsidian Sync 就是�
 
 关掉它的时候，macOS 会把 iCloud 上的副本撤走、本地 `~/Documents` 变空，很多人在这一步丢过数据。而且你其他文档本来同步得好好的，没必要陪葬。
 
-正确做法是**把 Obsidian 库单独挪出 `~/文稿`**，放到主目录下（主目录本身不同步）：
+正确做法是**把 Obsidian 库单独挪出 `~/Documents`**，放到主目录下（主目录本身不同步）：
 
 ```
-~/文稿/Obsidian    →    ~/Obsidian
+~/Documents/Obsidian    →    ~/Obsidian
 ```
 
 一次移动解决问题，其他文档不受影响，iCloud 功能照常。
@@ -55,7 +81,7 @@ Finder 里打开库所在目录 → 右键库文件夹 → **「立即下载」*
 然后在终端确认没有残留占位符：
 
 ```bash
-find ~/文稿/Obsidian -name '*.icloud' | head
+find ~/Documents/Obsidian -name '*.icloud' | head
 ```
 
 **必须没有任何输出。** 有输出说明还有文件没下载完，等它下完再继续。
@@ -63,7 +89,7 @@ find ~/文稿/Obsidian -name '*.icloud' | head
 ### 3. 复制到新位置
 
 ```bash
-cp -R ~/文稿/Obsidian ~/Obsidian
+cp -R ~/Documents/Obsidian ~/Obsidian
 ```
 
 用 `cp` 不用 `mv` —— 验证通过之前，旧的那份是你的后路。
@@ -71,7 +97,7 @@ cp -R ~/文稿/Obsidian ~/Obsidian
 ### 4. 验证两边一致
 
 ```bash
-echo "旧：$(find ~/文稿/Obsidian -type f | wc -l) 个文件，$(du -sh ~/文稿/Obsidian | cut -f1)"
+echo "旧：$(find ~/Documents/Obsidian -type f | wc -l) 个文件，$(du -sh ~/Documents/Obsidian | cut -f1)"
 echo "新：$(find ~/Obsidian -type f | wc -l) 个文件，$(du -sh ~/Obsidian | cut -f1)"
 ```
 
@@ -97,7 +123,7 @@ cd ~/code/cangjie-skill
 **至少用一整天**，确认新库一切正常，再删：
 
 ```bash
-rm -rf ~/文稿/Obsidian
+rm -rf ~/Documents/Obsidian
 ```
 
 删之前记得 Obsidian 里已经切到新库了，别把正在用的那份删了。
