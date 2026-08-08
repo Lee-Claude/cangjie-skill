@@ -23,7 +23,8 @@ _current_branch="$(git -C "$_script_dir" rev-parse --abbrev-ref HEAD 2>/dev/null
 [ -n "$_current_branch" ] && [ "$_current_branch" != "HEAD" ] || _current_branch="main"
 BRANCH="${BRANCH:-$_current_branch}"
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-900}"
-LABEL="com.lee.obsidian-pull"
+# 可覆盖，方便开一个不影响正式任务的测试 agent
+LABEL="${LABEL:-com.lee.obsidian-pull}"
 
 die() { printf '\033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 ok()  { printf '\033[32m✓\033[0m %s\n' "$1"; }
