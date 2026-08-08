@@ -45,7 +45,7 @@ git_version="$(git --version | awk '{print $3}')"
 git_major="${git_version%%.*}"
 git_minor="$(printf '%s' "$git_version" | cut -d. -f2)"
 if [ "$git_major" -lt 2 ] || { [ "$git_major" -eq 2 ] && [ "$git_minor" -lt 30 ]; }; then
-  die "git 版本太老（$git_version），需要 2.30+。macOS 上跑 'brew install git' 升级。"
+  die "git 版本太老（${git_version}），需要 2.30+。macOS 上跑 'brew install git' 升级。"
 fi
 
 # iCloud 检查：git 仓库放 iCloud Drive 会被"优化储存空间"抽成占位符，导致仓库损坏
@@ -79,7 +79,10 @@ git pull --rebase --autostash --quiet 2>/dev/null || warn "pull 失败，检查�
 if [ -d "$TARGET/workbench" ]; then
   die "workbench/ 落盘了，说明 sparse checkout 没生效"
 fi
-ok "笔记已就位：$TARGET/obsidian（$(find "$TARGET/obsidian" -name '*.md' | wc -l | tr -d ' ') 篇，来自分支 $BRANCH）"
+# 注意：变量后面紧跟中文全角标点时必须写成 ${VAR}。
+# 非 UTF-8 locale 下 bash 会把全角字符的首字节（如 '）' 的 0xEF）当成变量名的一部分，
+# 配合 set -u 直接报 "unbound variable"。这个坑在 UTF-8 环境下复现不出来。
+ok "笔记已就位：$TARGET/obsidian（$(find "$TARGET/obsidian" -name '*.md' | wc -l | tr -d ' ') 篇，来自分支 ${BRANCH}）"
 ok "代码未落盘，库是干净的"
 
 # ── 2. 自动 pull ────────────────────────────────────────────────────
@@ -119,7 +122,7 @@ launchctl load "$PLIST"
 ok "定时任务已注册，每 $((INTERVAL_SECONDS / 60)) 分钟自动 pull 一次"
 
 echo
-echo "完成。Obsidian 里打开「$FOLDER_NAME」就能看到笔记。"
+echo "完成。Obsidian 里打开「${FOLDER_NAME}」就能看到笔记。"
 echo
 echo "  出错日志：  /tmp/$LABEL.err"
 echo "  手动同步：  git -C '$TARGET' pull"
