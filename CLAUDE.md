@@ -11,7 +11,9 @@
 - 写**为什么这么做**和**踩了什么坑**，不要复述代码本身 —— 代码在仓库里，笔记的价值是解释取舍
 - 用中文
 
-云端会话没法直接写用户 Mac 上的文件夹，所以内容一律进仓库，由用户在本机 `git pull` 同步。同步方式见 `obsidian/README.md`。
+云端会话没法直接写用户 Mac 上的文件夹，所以内容一律进仓库。用户本机通过 sparse checkout 只把 `obsidian/` 拉进 Obsidian 库，launchd 每 15 分钟自动 pull —— 也就是说**你写进 `obsidian/` 并 push，笔记就会自动出现在用户的知识库里**。方案细节见 `obsidian/同步方案.md`，配置脚本是 `scripts/setup-obsidian-sync.sh`。
+
+因为库里是 sparse checkout，**不要把笔记放到 `obsidian/` 以外的地方** —— 放别处同步不过去。
 
 ## 开发
 
