@@ -5,14 +5,16 @@
 ## 接进本机 Obsidian 库
 
 ```bash
-git clone https://github.com/Lee-Claude/cangjie-skill.git ~/code/cangjie-skill
+# PR #1 合并前脚本还在功能分支上，clone 要带 -b；合并后去掉即可
+git clone -b claude/personal-ai-dashboard-adxhu5 \
+  https://github.com/Lee-Claude/cangjie-skill.git ~/code/cangjie-skill
 cd ~/code/cangjie-skill
 ./scripts/setup-obsidian-sync.sh ~/Documents/Obsidian
 ```
 
 一条命令搞定：sparse checkout 只把这个目录拉进库（代码不落盘），再注册一个 launchd 任务每 15 分钟自动 pull。脚本幂等，可以重复跑。
 
-> PR #1 合并前，笔记还在功能分支上，要加 `BRANCH=claude/personal-ai-dashboard-adxhu5` 前缀。
+拉哪个分支的笔记不用指定 —— 脚本会跟着自己所在的分支走。
 
 完整说明、为什么这么选、以及 iCloud 那个坑，见 [[同步方案]]。
 

@@ -13,8 +13,15 @@
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/Lee-Claude/cangjie-skill.git}"
-BRANCH="${BRANCH:-main}"
 FOLDER_NAME="${FOLDER_NAME:-AI工作台}"
+
+# 默认拉「脚本自己所在的那个分支」的笔记。这样在功能分支上跑就拿功能分支的笔记，
+# 合并到 main 之后跑就拿 main 的 —— 不用记 BRANCH= 前缀。
+_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_current_branch="$(git -C "$_script_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+# detached HEAD 会返回字面量 "HEAD"，这种情况退回 main
+[ -n "$_current_branch" ] && [ "$_current_branch" != "HEAD" ] || _current_branch="main"
+BRANCH="${BRANCH:-$_current_branch}"
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-900}"
 LABEL="com.lee.obsidian-pull"
 
@@ -72,7 +79,7 @@ git pull --rebase --autostash --quiet 2>/dev/null || warn "pull 失败，检查�
 if [ -d "$TARGET/workbench" ]; then
   die "workbench/ 落盘了，说明 sparse checkout 没生效"
 fi
-ok "笔记已就位：$TARGET/obsidian（$(find "$TARGET/obsidian" -name '*.md' | wc -l | tr -d ' ') 篇）"
+ok "笔记已就位：$TARGET/obsidian（$(find "$TARGET/obsidian" -name '*.md' | wc -l | tr -d ' ') 篇，来自分支 $BRANCH）"
 ok "代码未落盘，库是干净的"
 
 # ── 2. 自动 pull ────────────────────────────────────────────────────
