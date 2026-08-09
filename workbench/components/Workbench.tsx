@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChatPanel } from "./ChatPanel";
 import { HotFeed } from "./HotFeed";
+import { VaultPanel } from "./vault/VaultPanel";
 import { useChat } from "@/hooks/useChat";
 import { useHotFeed } from "@/hooks/useHotFeed";
 import type { HotItem } from "@/lib/types";
+
+type View = "workbench" | "vault";
 
 type Status = {
   provider: "anthropic" | "openai" | null;
@@ -20,6 +23,7 @@ export function Workbench() {
   const [selected, setSelected] = useState<HotItem[]>([]);
   const [template, setTemplate] = useState("free");
   const [status, setStatus] = useState<Status | null>(null);
+  const [view, setView] = useState<View>("workbench");
 
   useEffect(() => {
     fetch("/api/status")
@@ -46,30 +50,63 @@ export function Workbench() {
     <main className="flex h-screen flex-col">
       {status && !status.provider && <MissingKeyBanner />}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <HotFeed
-          feed={feed}
-          loading={loading}
-          error={error}
-          onRefresh={refresh}
-          selectedIds={selectedIds}
-          onToggle={toggle}
-          onClearSelection={() => setSelected([])}
-        />
-        <ChatPanel
-          messages={messages}
-          streaming={streaming}
-          context={selected}
-          template={template}
-          onTemplateChange={setTemplate}
-          onSend={(text) => void send(text, { context: selected, template })}
-          onStop={stop}
-          onReset={reset}
-          onRemoveContext={toggle}
-          providerLabel={providerLabel}
-        />
-      </div>
+      <nav className="flex shrink-0 items-center gap-1 border-b border-ink-800 bg-ink-950 px-4 py-2">
+        <ViewTab label="工作台" active={view === "workbench"} onClick={() => setView("workbench")} />
+        <ViewTab label="知识星图" active={view === "vault"} onClick={() => setView("vault")} />
+      </nav>
+
+      {view === "workbench" ? (
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+          <HotFeed
+            feed={feed}
+            loading={loading}
+            error={error}
+            onRefresh={refresh}
+            selectedIds={selectedIds}
+            onToggle={toggle}
+            onClearSelection={() => setSelected([])}
+          />
+          <ChatPanel
+            messages={messages}
+            streaming={streaming}
+            context={selected}
+            template={template}
+            onTemplateChange={setTemplate}
+            onSend={(text) => void send(text, { context: selected, template })}
+            onStop={stop}
+            onReset={reset}
+            onRemoveContext={toggle}
+            providerLabel={providerLabel}
+          />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1">
+          <VaultPanel />
+        </div>
+      )}
     </main>
+  );
+}
+
+function ViewTab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+        active ? "bg-ink-800 text-white" : "text-ink-500 hover:text-ink-300"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

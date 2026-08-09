@@ -1,8 +1,9 @@
 # AI 工作台
 
-左边是实时 AI 热点聚合，右边是能流式对话的创作助手。勾选热点 → 选创作模板 → 直接出稿。
+顶部两个视图切换：**工作台**（左边实时 AI 热点聚合，右边流式创作助手，勾选热点 → 选模板 → 直接出稿）和**知识星图**（读本机 Obsidian vault，把笔记的双链画成关系图，点节点或正文里的 `[[链接]]` 都能跳转）。
 
-![界面](./docs/screenshot.png)
+![工作台视图](./docs/screenshot.png)
+![知识星图视图](./docs/vault-screenshot.png)
 
 ## 快速开始
 
@@ -77,17 +78,34 @@ RSS 2.0 和 Atom 两种格式都支持。
 
 对话是真正的流式：服务端 SSE 逐 token 推，前端逐字渲染，支持中途「停止」。Enter 发送，Shift+Enter 换行。
 
+## 知识星图
+
+读本机的 Obsidian vault（默认是仓库自己的 `../obsidian`，不用配置就有真实数据可看），解析
+frontmatter 和 `[[wikilink]]`，画成一张可点击的关系图。想指向别的 vault：
+
+```bash
+VAULT_ROOT=/absolute/path/to/your-vault
+```
+
+死链接（`[[目标笔记不存在]]`）会被过滤掉，不生成幽灵节点；正文里的双链渲染成可点击链接，
+点了直接跳转对应笔记，跟图谱节点点击是同一套导航。设计取舍见
+`obsidian/知识星图.md`（这份笔记本身也在图谱里，可以直接打开工作台看它）。
+
 ## 代码结构
 
 ```
-app/api/hot      热点聚合接口（并行拉取 + 缓存）
-app/api/chat     流式对话接口（SSE）
-app/api/status   前端用来判断有没有配 key
-lib/sources/     每个数据源一个文件，加源就加一个文件再注册到 index.ts
-lib/llm/         provider 抽象：anthropic.ts + openai.ts
-lib/prompt.ts    system prompt 和创作模板
-hooks/           useHotFeed（轮询）、useChat（SSE 消费）
-components/      HotFeed / ChatPanel / Markdown（零依赖的极简渲染，不走 innerHTML）
+app/api/hot         热点聚合接口（并行拉取 + 缓存）
+app/api/chat        流式对话接口（SSE）
+app/api/status      前端用来判断有没有配 key
+app/api/vault        vault 笔记列表 + 图谱数据
+app/api/vault/[slug] 单篇笔记详情 + 反向链接 + wikilink 解析表
+lib/sources/         每个数据源一个文件，加源就加一个文件再注册到 index.ts
+lib/vault/            vault 读取、frontmatter 解析、力导向布局
+lib/llm/              provider 抽象：anthropic.ts + openai.ts
+lib/prompt.ts         system prompt 和创作模板
+hooks/                useHotFeed / useChat / useVault
+components/           HotFeed / ChatPanel / Markdown（零依赖渲染，不走 innerHTML）
+components/vault/     Graph / NoteList / NoteDetail / VaultPanel
 ```
 
 加一个新数据源：在 `lib/sources/` 写个返回 `HotSourceResult` 的函数，扔进 `index.ts` 的 `collectors()` 就完事。

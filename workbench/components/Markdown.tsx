@@ -8,10 +8,19 @@ import { Fragment, type ReactNode } from "react";
  * 全部构造成 React 元素，不走 dangerouslySetInnerHTML，天然免疫 XSS。
  */
 
-function renderInline(text: string, keyPrefix: string): ReactNode[] {
+type WikilinkOptions = {
+  /** 给一个 wikilink 目标文本，返回它指向的 slug；null/undefined 表示解不出来（死链接） */
+  resolveWikilink?: (target: string) => string | null | undefined;
+  onWikilinkClick?: (slug: string) => void;
+};
+
+function renderInline(text: string, keyPrefix: string, options: WikilinkOptions = {}): ReactNode[] {
   const nodes: ReactNode[] = [];
-  // 行内代码 / 加粗 / 链接，按出现顺序切分
-  const pattern = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\[[^\]]+\]\([^)]+\))/g;
+  // wikilink 必须排在普通链接前面 —— 两者都以 `[` 开头，交替匹配按顺序尝试，
+  // 普通链接分支排前面的话会把 `[[热点聚合]]` 的内层 `]` 错认成自己的收尾。
+  // 转义竖线（表格里 `[[标题\|别名]]` 那种写法）和普通竖线都当别名分隔符。
+  const pattern =
+    /(`[^`]+`)|(\*\*[^*]+\*\*)|(\[\[[^\]|]+?(?:\\?\|[^\]]*)?\]\])|(\[[^\]]+\]\([^)]+\))/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let i = 0;
@@ -34,6 +43,29 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
         <strong key={key} className="font-semibold text-white">
           {token.slice(2, -2)}
         </strong>,
+      );
+    } else if (token.startsWith("[[")) {
+      const wikiMatch = /^\[\[([^\]|]+?)(?:\\?\|([^\]]+))?\]\]$/.exec(token);
+      const target = wikiMatch![1].trim();
+      const label = (wikiMatch![2] ?? target).trim();
+      const slug = options.resolveWikilink?.(target);
+
+      nodes.push(
+        slug ? (
+          <button
+            key={key}
+            type="button"
+            onClick={() => options.onWikilinkClick?.(slug)}
+            className="text-accent underline decoration-dotted underline-offset-2 hover:text-accent-dim"
+          >
+            {label}
+          </button>
+        ) : (
+          // 目标笔记不存在：保留双链的视觉痕迹但不可点，别让用户点了没反应
+          <span key={key} className="text-ink-500" title="这篇笔记还没写">
+            [[{label}]]
+          </span>
+        ),
       );
     } else {
       const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
@@ -133,7 +165,7 @@ function parseBlocks(markdown: string): Block[] {
   return blocks;
 }
 
-export function Markdown({ text }: { text: string }) {
+export function Markdown({ text, ...wikilinkOptions }: { text: string } & WikilinkOptions) {
   const blocks = parseBlocks(text);
 
   return (
@@ -162,7 +194,7 @@ export function Markdown({ text }: { text: string }) {
                 key={key}
                 className={`${sizes[block.level - 1]} font-semibold text-white`}
               >
-                {renderInline(block.content, key)}
+                {renderInline(block.content, key, wikilinkOptions)}
               </p>
             );
           }
@@ -170,13 +202,13 @@ export function Markdown({ text }: { text: string }) {
             return block.ordered ? (
               <ol key={key} className="list-decimal space-y-1 pl-5 marker:text-ink-500">
                 {block.items.map((item, j) => (
-                  <li key={`${key}-${j}`}>{renderInline(item, `${key}-${j}`)}</li>
+                  <li key={`${key}-${j}`}>{renderInline(item, `${key}-${j}`, wikilinkOptions)}</li>
                 ))}
               </ol>
             ) : (
               <ul key={key} className="list-disc space-y-1 pl-5 marker:text-ink-500">
                 {block.items.map((item, j) => (
-                  <li key={`${key}-${j}`}>{renderInline(item, `${key}-${j}`)}</li>
+                  <li key={`${key}-${j}`}>{renderInline(item, `${key}-${j}`, wikilinkOptions)}</li>
                 ))}
               </ul>
             );
@@ -186,7 +218,7 @@ export function Markdown({ text }: { text: string }) {
                 {block.content.split("\n").map((line, j) => (
                   <Fragment key={`${key}-${j}`}>
                     {j > 0 && <br />}
-                    {renderInline(line, `${key}-${j}`)}
+                    {renderInline(line, `${key}-${j}`, wikilinkOptions)}
                   </Fragment>
                 ))}
               </p>
