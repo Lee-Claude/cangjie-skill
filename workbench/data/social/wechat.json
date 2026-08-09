@@ -1,0 +1,32 @@
+{
+  "demoMode": true,
+  "updatedAt": "2026-08-09T08:00:00+08:00",
+  "account": {
+    "name": "示例公众号 · 未配置真实数据",
+    "followers": 4230,
+    "followersChange7d": 56
+  },
+  "articles": [
+    {
+      "title": "示例文章：如何用 AI 搭建一个热点聚合工具",
+      "publishedAt": "2026-08-07",
+      "reads": 3420,
+      "likes": 89,
+      "shares": 34
+    },
+    {
+      "title": "示例文章：三个被低估的开源项目",
+      "publishedAt": "2026-08-04",
+      "reads": 2150,
+      "likes": 52,
+      "shares": 18
+    },
+    {
+      "title": "示例文章：我的知识管理方法论",
+      "publishedAt": "2026-07-30",
+      "reads": 5680,
+      "likes": 143,
+      "shares": 61
+    }
+  ]
+}

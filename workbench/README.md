@@ -1,9 +1,10 @@
 # AI 工作台
 
-顶部两个视图切换：**工作台**（左边实时 AI 热点聚合，右边流式创作助手，勾选热点 → 选模板 → 直接出稿）和**知识星图**（读本机 Obsidian vault，把笔记的双链画成关系图，点节点或正文里的 `[[链接]]` 都能跳转）。
+顶部三个视图切换：**工作台**（左边实时 AI 热点聚合，右边流式创作助手，勾选热点 → 选模板 → 直接出稿）、**知识星图**（读本机 Obsidian vault，把笔记的双链画成关系图，点节点或正文里的 `[[链接]]` 都能跳转）和**社媒**（社媒洞察 / 抖音数据 / 公众号，本地文件驱动，不依赖任何官方 API）。
 
 ![工作台视图](./docs/screenshot.png)
 ![知识星图视图](./docs/vault-screenshot.png)
+![社媒视图](./docs/social-screenshot.png)
 
 ## 快速开始
 
@@ -91,21 +92,34 @@ VAULT_ROOT=/absolute/path/to/your-vault
 点了直接跳转对应笔记，跟图谱节点点击是同一套导航。设计取舍见
 `obsidian/知识星图.md`（这份笔记本身也在图谱里，可以直接打开工作台看它）。
 
+## 社媒模块
+
+社媒洞察 / 抖音数据 / 公众号三个子标签，对应参考项目 [oyorf/person_dashboard](https://github.com/oyorf/person_dashboard) 里同名模块——但那个仓库并没有开源这几块的实现，所以这里是照着效果自己设计的，架构上刻意**不接官方 API**：抖音开放平台的创作者数据、微信公众号的图文分析接口都需要企业资质或认证服务号，个人开发者这一轮申请不到、也没法验证写出来的对接代码是否真的能跑通。取而代之是本地文件驱动：
+
+- **社媒洞察**：读 `obsidian/insights/` 目录下的 Markdown 笔记（跟知识星图共享同一个 vault，但不参与双链解析、不出现在关系图里），frontmatter 约定 `title` / `platform` / `period` / `created` / `tags`。想换目录：`INSIGHTS_ROOT=/absolute/path`。
+- **抖音数据 / 公众号**：读约定路径的 JSON，仓库自带脱敏 demo 数据（`demoMode: true`）。想接真实数据，手动导出覆盖文件，或以后写个同步脚本定期写入即可，前端不用改。想换路径：`DOUYIN_DATA_PATH` / `WECHAT_DATA_PATH`（默认分别是 `data/social/douyin.json`、`data/social/wechat.json`）。
+
+三类数据文件不存在时，接口一律返回 `200` + 空数据，前端渲染引导文案而不是报错——跟热点聚合的「单源容错」是同一个思路：没数据是正常状态，不是异常。设计取舍见 `obsidian/社媒模块.md`。
+
 ## 代码结构
 
 ```
-app/api/hot         热点聚合接口（并行拉取 + 缓存）
-app/api/chat        流式对话接口（SSE）
-app/api/status      前端用来判断有没有配 key
-app/api/vault        vault 笔记列表 + 图谱数据
-app/api/vault/[slug] 单篇笔记详情 + 反向链接 + wikilink 解析表
-lib/sources/         每个数据源一个文件，加源就加一个文件再注册到 index.ts
-lib/vault/            vault 读取、frontmatter 解析、力导向布局
-lib/llm/              provider 抽象：anthropic.ts + openai.ts
-lib/prompt.ts         system prompt 和创作模板
-hooks/                useHotFeed / useChat / useVault
-components/           HotFeed / ChatPanel / Markdown（零依赖渲染，不走 innerHTML）
-components/vault/     Graph / NoteList / NoteDetail / VaultPanel
+app/api/hot           热点聚合接口（并行拉取 + 缓存）
+app/api/chat          流式对话接口（SSE）
+app/api/status        前端用来判断有没有配 key
+app/api/vault         vault 笔记列表 + 图谱数据
+app/api/vault/[slug]  单篇笔记详情 + 反向链接 + wikilink 解析表
+app/api/social/*      insights / douyin / wechat 三个只读接口
+lib/sources/           每个数据源一个文件，加源就加一个文件再注册到 index.ts
+lib/vault/             vault 读取、frontmatter 解析、力导向布局
+lib/social/             insights / douyin / wechat 的读取逻辑，独立于 lib/vault
+lib/llm/               provider 抽象：anthropic.ts + openai.ts
+lib/prompt.ts          system prompt 和创作模板
+hooks/                 useHotFeed / useChat / useVault / useSocial
+components/            HotFeed / ChatPanel / Markdown（零依赖渲染，不走 innerHTML）
+components/vault/      Graph / NoteList / NoteDetail / VaultPanel
+components/social/     SocialPanel / InsightsFeed / DouyinDashboard / WechatDashboard / MiniChart
+data/social/            douyin.json / wechat.json 的 demo 数据
 ```
 
 加一个新数据源：在 `lib/sources/` 写个返回 `HotSourceResult` 的函数，扔进 `index.ts` 的 `collectors()` 就完事。
@@ -119,6 +133,10 @@ components/vault/     Graph / NoteList / NoteDetail / VaultPanel
 | `ANTHROPIC_MAX_TOKENS` | 默认 64000（thinking 和正文共用这个额度） |
 | `GITHUB_TOKEN` | 把 GitHub 搜索限速从 10 次/分钟提到 30 次/分钟 |
 | `HOT_CACHE_TTL_MS` | 热点缓存时长，默认 300000 |
+| `VAULT_ROOT` | 知识星图读取的 vault 目录，默认仓库自己的 `../obsidian` |
+| `INSIGHTS_ROOT` | 社媒洞察读取的笔记目录，默认 `<VAULT_ROOT>/insights` |
+| `DOUYIN_DATA_PATH` | 抖音数据 JSON 路径，默认 `data/social/douyin.json` |
+| `WECHAT_DATA_PATH` | 公众号数据 JSON 路径，默认 `data/social/wechat.json` |
 
 ## 部署
 

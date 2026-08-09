@@ -1,0 +1,43 @@
+{
+  "demoMode": true,
+  "updatedAt": "2026-08-09T08:00:00+08:00",
+  "account": {
+    "nickname": "示例账号 · 未配置真实数据",
+    "followers": 18420,
+    "followersChange7d": 312,
+    "totalLikes": 156300,
+    "totalPlays": 2840000
+  },
+  "trend": [
+    { "date": "2026-08-03", "plays": 41200, "likes": 2100, "newFollowers": 38 },
+    { "date": "2026-08-04", "plays": 38500, "likes": 1950, "newFollowers": 29 },
+    { "date": "2026-08-05", "plays": 52300, "likes": 3400, "newFollowers": 61 },
+    { "date": "2026-08-06", "plays": 47800, "likes": 2600, "newFollowers": 44 },
+    { "date": "2026-08-07", "plays": 63100, "likes": 4200, "newFollowers": 72 },
+    { "date": "2026-08-08", "plays": 55600, "likes": 3100, "newFollowers": 35 },
+    { "date": "2026-08-09", "plays": 49200, "likes": 2800, "newFollowers": 33 }
+  ],
+  "topVideos": [
+    {
+      "title": "示例视频：AI 工具三分钟入门",
+      "plays": 128000,
+      "likes": 6400,
+      "comments": 312,
+      "publishedAt": "2026-08-05"
+    },
+    {
+      "title": "示例视频：这个功能太多人不知道了",
+      "plays": 96500,
+      "likes": 5100,
+      "comments": 208,
+      "publishedAt": "2026-08-07"
+    },
+    {
+      "title": "示例视频：新手常见的三个误区",
+      "plays": 74300,
+      "likes": 3800,
+      "comments": 156,
+      "publishedAt": "2026-08-02"
+    }
+  ]
+}

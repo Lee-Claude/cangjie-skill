@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChatPanel } from "./ChatPanel";
 import { HotFeed } from "./HotFeed";
+import { SocialPanel } from "./social/SocialPanel";
 import { VaultPanel } from "./vault/VaultPanel";
 import { useChat } from "@/hooks/useChat";
 import { useHotFeed } from "@/hooks/useHotFeed";
 import type { HotItem } from "@/lib/types";
 
-type View = "workbench" | "vault";
+type View = "workbench" | "vault" | "social";
 
 type Status = {
   provider: "anthropic" | "openai" | null;
@@ -53,9 +54,10 @@ export function Workbench() {
       <nav className="flex shrink-0 items-center gap-1 border-b border-ink-800 bg-ink-950 px-4 py-2">
         <ViewTab label="工作台" active={view === "workbench"} onClick={() => setView("workbench")} />
         <ViewTab label="知识星图" active={view === "vault"} onClick={() => setView("vault")} />
+        <ViewTab label="社媒" active={view === "social"} onClick={() => setView("social")} />
       </nav>
 
-      {view === "workbench" ? (
+      {view === "workbench" && (
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
           <HotFeed
             feed={feed}
@@ -79,9 +81,15 @@ export function Workbench() {
             providerLabel={providerLabel}
           />
         </div>
-      ) : (
+      )}
+      {view === "vault" && (
         <div className="min-h-0 flex-1">
           <VaultPanel />
+        </div>
+      )}
+      {view === "social" && (
+        <div className="min-h-0 flex-1">
+          <SocialPanel />
         </div>
       )}
     </main>
