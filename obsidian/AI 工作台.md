@@ -37,6 +37,7 @@ npm run dev                  # http://localhost:3000
 - [[库放在哪]] —— 库为什么不能放 iCloud，以及怎么安全搬走
 - [[知识星图]] —— 读本机 vault 画关系图，正文双链怎么做到可点击跳转
 - [[社媒模块]] —— 社媒洞察 / 抖音数据 / 公众号，为什么不接官方 API
+- [[Claudian 认证踩坑]] —— authentication_failed 报错跟加的 key 没关系，是插件里 CLI 路径缺了一截
 
 ## 目录结构
 
