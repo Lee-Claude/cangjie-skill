@@ -52,6 +52,12 @@ hooks/           useHotFeed（轮询）、useChat（SSE 消费）
 components/      HotFeed / ChatPanel / Markdown
 ```
 
+## 仓库里的其他项目
+
+跟这个工作台业务不相关，但共用同一套 Obsidian 笔记约定，所以也从这里挂出去：
+
+- [[希腊房地产快讯]] —— 独立 Next.js 小站，聚合希腊新闻源 RSS 筛房地产报道；代码在 `greek-real-estate-news/`
+
 ## 待办
 
 - [ ] 热点趋势图（需要先攒历史快照，目前只有当前值）
